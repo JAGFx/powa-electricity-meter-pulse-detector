@@ -35,3 +35,4 @@
 CMakeListsPrivate.txt
 cmake-build-*/
 .idea/
+src/Wifi_Credentials.h

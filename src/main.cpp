@@ -4,6 +4,8 @@
 #include <Adafruit_I2CDevice.h>
 #include <Adafruit_SSD1306.h>
 #include <BH1750.h>
+#include <WiFi.h>
+#include <Wifi_Credentials.h>
 
 // ----------------------
 // ---- Modules
@@ -29,6 +31,14 @@ unsigned long lastPulseMillis    = 0;
 const long    ledWhPulseInterval = 50;
 bool          scheduleLedWhPulse = false;
 
+// -- Wifi
+IPAddress ip( 192, 168, 1, 70 );
+IPAddress gateway( 192, 168, 1, 1 );
+IPAddress subnet( 255, 255, 255, 0 );
+
+uint8_t       wifiCounterTry = 0;
+const uint8_t WIFI_MAX_TRY   = 10;
+
 // ---- ./Modules
 // ----------------------
 
@@ -43,8 +53,12 @@ volatile float whCount = 0;
 void detectPulseChange() {
     int currentLux = ( int ) luxSensor.readLightLevel();
     
+    Serial.print( currentLux );
+    Serial.print( " - " );
+    Serial.println( lastLux );
+    
     if ( ( currentLux - LUX_OFFSET ) > 0 && currentLux != lastLux ) {
-        currentLux++;
+        whCount++;
         lastLux            = currentLux;
         scheduleLedWhPulse = true;
     }
@@ -108,6 +122,66 @@ void updateLedPulseState() {
     }
 }
 
+/**
+ * Method to reset oled screen and display a new text
+ *
+ * @param str
+ * @param clear
+ */
+void oledPrint( const char *str, bool clear = true ) {
+    if ( clear )
+        display.clearDisplay();
+    
+    display.setCursor( 0, 0 );
+    display.print( str );
+    display.display();
+}
+
+/**
+ * Method to reset oled screen and display a new text
+ *
+ * @param str
+ * @param clear
+ */
+void oledPrintLn( const char *str, bool clear = true ) {
+    if ( clear )
+        display.clearDisplay();
+    
+    display.setCursor( 0, 0 );
+    display.println( str );
+    display.display();
+}
+
+/**
+ * Method to reset oled screen and display a new text
+ *
+ * @param x
+ * @param clear
+ */
+void oledPrintLn( const Printable &x, bool clear = true ) {
+    if ( clear )
+        display.clearDisplay();
+    
+    display.setCursor( 0, 0 );
+    display.println( x );
+    display.display();
+}
+
+/**
+ * Method to reset oled screen and display a new text
+ *
+ * @param b
+ * @param clear
+ */
+void oledPrintLn( unsigned char b, bool clear = true ) {
+    if ( clear )
+        display.clearDisplay();
+    
+    display.setCursor( 0, 0 );
+    display.println( b );
+    display.display();
+}
+
 // ---- ./Common method
 // ----------------------
 
@@ -133,7 +207,7 @@ void IRAM_ATTR onResetValue() {
 // ----- Minimal functions
 
 void setup() {
-    Serial.begin( 9600 );
+    Serial.begin( 115200 );
     
     // ---- Reset WH count button
     pinMode( RST_WH_BUTTON_PIN, INPUT_PULLDOWN );
@@ -142,35 +216,57 @@ void setup() {
     // ---- LED Pulse
     pinMode( WH_PULSE_LED_PIN, OUTPUT );
     
-    // ---- Lux sensor
-    luxSensor.begin( BH1750::CONTINUOUS_LOW_RES_MODE );
-    
     // ---- OLED Screen
     display.begin( SSD1306_SWITCHCAPVCC, 0x3C ); // Address 0x3C for 128x32
-    display.display();
-    delay( 1000 );
-    display.clearDisplay();
-    display.display();
-    display.setTextSize( 3 );
+    display.setTextSize( 1 );
     display.setTextColor( SSD1306_WHITE );
-    display.setCursor( 0, 0 );
-    display.println( "Init..." );
-    display.setCursor( 0, 0 );
-    display.display(); // actually display all of the above
-    delay( 2000 );
+    oledPrintLn( "Init..." );
+    delay( 500 );
+    
+    // ---- Lux sensor
+    luxSensor.begin();
+    oledPrintLn( "Sensor init..." );
+    delay( 500 );
+    
+    // ---- Wifi
+    WiFi.config( ip, gateway, subnet );
+    WiFi.begin( WIFI_SSID, WIFI_PSWD );
+    
+    while ( WiFi.status() != WL_CONNECTED ) {
+        oledPrint( "Wifi: Connecting" );
+        oledPrintLn( ++wifiCounterTry, false );
+        
+        if ( wifiCounterTry > WIFI_MAX_TRY ) {
+            wifiCounterTry = 0;
+            WiFi.begin( WIFI_SSID, WIFI_PSWD );
+            oledPrintLn( "Wifi: Reset" );
+        }
+        
+        delay( 500 );
+    }
+    
+    oledPrint( "Wifi: " );
+    oledPrintLn( WiFi.localIP() );
+    
+    display.setTextSize( 3 );
+    delay( 1000 );
 }
 
 void loop() {
+    // ---- Wifi connexion
+    if ( WiFi.status() != WL_CONNECTED )
+        ESP.restart();
+    
     // ---- Lux senor
     detectPulseChange();
     
     // ---- Display WH count
     display.clearDisplay();
+    display.setCursor( 0, 0 );
     display.setTextSize( 3 );
     display.print( getValue(), getPrecision() );
     display.setTextSize( 2 );
     display.println( getUnit() );
-    display.setCursor( 0, 0 );
     display.display(); // actually display all of the above1
     delay( 100 );
     
