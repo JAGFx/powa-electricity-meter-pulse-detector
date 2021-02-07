@@ -14,33 +14,37 @@
 Adafruit_SSD1306 display = Adafruit_SSD1306( 128, 32, &Wire );
 
 // -- Luminosity sensor
-BH1750    luxSensor; // instantiate a sensor event object
-const int LUX_OFFSET     = 0;
-int       lastLux        = -1;
+BH1750        luxSensor; // instantiate a sensor event object
+const uint8_t LUX_OFFSET = 0;
+uint8_t       lastLux    = -1;
 
 // -- Reset wh count
 #define RST_WH_DEBOUNCE_TIME 250
 #define RST_WH_BUTTON_PIN 34
+
 volatile uint32_t resetDebouncerTimer = 0;
 uint32_t          resetButtonCount    = 0;
 
 // -- Led WH pulse
 #define WH_PULSE_LED_PIN 12
-int           ledWhPulseState    = LOW;
-unsigned long lastPulseMillis    = 0;
-const long    ledWhPulseInterval = 50;
-bool          scheduleLedWhPulse = false;
 
 // -- Wifi
+#define WIFI_MAX_TRY 10
+
 IPAddress ip( 192, 168, 1, 70 );
 IPAddress gateway( 192, 168, 1, 1 );
 IPAddress subnet( 255, 255, 255, 0 );
+uint8_t   wifiCounterTry              = 0;
 
-uint8_t       wifiCounterTry = 0;
-const uint8_t WIFI_MAX_TRY   = 10;
+// -- Sync
+#define SYNC_LED_PIN 2
+#define SYNC_CYCLE 5
+
+uint8_t syncCycleCounter = 0;
 
 // ---- ./Modules
 // ----------------------
+
 
 volatile float whCount = 0;
 
@@ -51,16 +55,15 @@ volatile float whCount = 0;
  * Detect a pulse from you electricity meter. Each pulse = 1 Wh in France
  */
 void detectPulseChange() {
-    int currentLux = ( int ) luxSensor.readLightLevel();
-    
-    Serial.print( currentLux );
-    Serial.print( " - " );
-    Serial.println( lastLux );
+    uint8_t currentLux = ( int ) luxSensor.readLightLevel();
     
     if ( ( currentLux - LUX_OFFSET ) > 0 && currentLux != lastLux ) {
         whCount++;
-        lastLux            = currentLux;
-        scheduleLedWhPulse = true;
+        syncCycleCounter++;
+        lastLux = currentLux;
+        
+        // Enable post process after the detection of new pulse
+        digitalWrite( WH_PULSE_LED_PIN, HIGH );
     }
 }
 
@@ -96,30 +99,6 @@ int getPrecision() {
     else if ( getValue() < 100 ) return 2;
     else if ( getValue() < 1000 ) return 1;
     else return 0;
-}
-
-/**
- * Update the state of the led pulse
- */
-void updateLedPulseState() {
-    unsigned long currentMillis = millis();
-    
-    if ( currentMillis - lastPulseMillis >= ledWhPulseInterval && scheduleLedWhPulse ) {
-        // save the lastLux time you blinked the LED
-        lastPulseMillis = currentMillis;
-        
-        // if the LED is off turn it on and vice-versa:
-        if ( ledWhPulseState == LOW )
-            ledWhPulseState = HIGH;
-        
-        else {
-            ledWhPulseState    = LOW;
-            scheduleLedWhPulse = false;
-        }
-        
-        // set the LED with the ledWhPulseState of the variable:
-        digitalWrite( WH_PULSE_LED_PIN, ledWhPulseState );
-    }
 }
 
 /**
@@ -201,6 +180,30 @@ void IRAM_ATTR onResetValue() {
     }
 }
 
+/**
+ * Post process after a pulse detection. Do a sync with a remote for example
+ */
+void IRAM_ATTR postProcessPulseDetection() {
+    Serial.println( "Catch" );
+    digitalWrite( WH_PULSE_LED_PIN, HIGH );
+    
+    // --- Process here
+    if ( syncCycleCounter >= SYNC_CYCLE ) {
+        syncCycleCounter = 0;
+        digitalWrite( WH_PULSE_LED_PIN, HIGH );
+        
+        // --- Sync here
+        Serial.println( "Sync" );
+        // --- ./Sync here
+        
+        digitalWrite( WH_PULSE_LED_PIN, LOW );
+    }
+    // --- ./Process here
+    
+    digitalWrite( WH_PULSE_LED_PIN, LOW );
+    Serial.println( "Plop" );
+}
+
 // ---- ./Interrupt
 // ----------------------
 
@@ -208,13 +211,20 @@ void IRAM_ATTR onResetValue() {
 
 void setup() {
     Serial.begin( 115200 );
+    delay( 500 );
     
     // ---- Reset WH count button
-    pinMode( RST_WH_BUTTON_PIN, INPUT_PULLDOWN );
-    attachInterrupt( RST_WH_BUTTON_PIN, onResetValue, RISING );
+//    pinMode( RST_WH_BUTTON_PIN, INPUT_PULLDOWN );
+//    attachInterrupt( RST_WH_BUTTON_PIN, onResetValue, RISING );
     
     // ---- LED Pulse
     pinMode( WH_PULSE_LED_PIN, OUTPUT );
+    digitalWrite( WH_PULSE_LED_PIN, LOW );
+    attachInterrupt( WH_PULSE_LED_PIN, postProcessPulseDetection, RISING );
+    
+    // ---- Sync
+    pinMode( SYNC_LED_PIN, OUTPUT );
+    digitalWrite( SYNC_LED_PIN, LOW );
     
     // ---- OLED Screen
     display.begin( SSD1306_SWITCHCAPVCC, 0x3C ); // Address 0x3C for 128x32
@@ -224,16 +234,17 @@ void setup() {
     delay( 500 );
     
     // ---- Lux sensor
-    luxSensor.begin();
     oledPrintLn( "Sensor init..." );
+    luxSensor.begin();
     delay( 500 );
     
     // ---- Wifi
+    oledPrintLn( "Wifi init..." );
     WiFi.config( ip, gateway, subnet );
     WiFi.begin( WIFI_SSID, WIFI_PSWD );
     
     while ( WiFi.status() != WL_CONNECTED ) {
-        oledPrint( "Wifi: Connecting" );
+        oledPrint( "Wifi connecting" );
         oledPrintLn( ++wifiCounterTry, false );
         
         if ( wifiCounterTry > WIFI_MAX_TRY ) {
@@ -246,10 +257,10 @@ void setup() {
     }
     
     oledPrint( "Wifi: " );
-    oledPrintLn( WiFi.localIP() );
+    oledPrintLn( WiFi.localIP(), false );
+    delay( 1000 );
     
     display.setTextSize( 3 );
-    delay( 1000 );
 }
 
 void loop() {
@@ -268,7 +279,6 @@ void loop() {
     display.setTextSize( 2 );
     display.println( getUnit() );
     display.display(); // actually display all of the above1
-    delay( 100 );
     
     // ---- Reset button
     if ( resetButtonCount >= 5 ) {
@@ -277,6 +287,5 @@ void loop() {
         resetButtonCount = 0;
     }
     
-    // ---- Update pulse LED
-    updateLedPulseState();
+    delay( 100 );
 }
