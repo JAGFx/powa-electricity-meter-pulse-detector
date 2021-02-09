@@ -12,4 +12,9 @@
 #define WIFI_SSID "YourSSID"
 #define WIFI_PSWD "YourPassword"
 
+#define SYNC_NAME "ASensorName"
+#define SYNC_ENDPOINT_HOST "192.168.1.100"
+#define SYNC_ENDPOINT_PORT 8080
+#define SYNC_ENDPOINT_URI "/api/sensors/"
+
 #endif //CONSUMPTIONSNIFFER_WIFI_CREDENTIALS_H

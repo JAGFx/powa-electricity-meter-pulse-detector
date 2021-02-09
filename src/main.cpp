@@ -5,7 +5,9 @@
 #include <Adafruit_SSD1306.h>
 #include <BH1750.h>
 #include <WiFi.h>
-#include <Wifi_Credentials.h>
+#include <HTTPClient.h>
+
+#include <Settings.h>
 
 // ----------------------
 // ---- Modules
@@ -38,9 +40,9 @@ uint8_t   wifiCounterTry              = 0;
 
 // -- Sync
 #define SYNC_LED_PIN 2
-#define SYNC_CYCLE 5
+#define SYNC_CYCLE 100
 
-uint8_t syncCycleCounter = 0;
+uint16_t syncCycleCounter = 0;
 
 // ---- ./Modules
 // ----------------------
@@ -59,11 +61,29 @@ void detectPulseChange() {
     
     if ( ( currentLux - LUX_OFFSET ) > 0 && currentLux != lastLux ) {
         whCount++;
-        syncCycleCounter++;
         lastLux = currentLux;
         
         // Enable post process after the detection of new pulse
         digitalWrite( WH_PULSE_LED_PIN, HIGH );
+        
+        // --- Process here
+        if ( syncCycleCounter >= SYNC_CYCLE ) {
+            syncCycleCounter = 0;
+            digitalWrite( SYNC_LED_PIN, HIGH );
+            
+            // --- Sync here
+            HTTPClient http;
+            String     data  = "{\"target\":\"" + String( SYNC_NAME ) + "\",\"value\":\"" + whCount + "\"}";
+            
+            http.begin( SYNC_ENDPOINT_HOST, SYNC_ENDPOINT_PORT, String( SYNC_ENDPOINT_URI ) + SYNC_NAME );
+            http.addHeader( "Content-Type", "application/json" );
+            http.POST( data );
+            http.end();
+            // --- ./Sync here
+            
+            digitalWrite( SYNC_LED_PIN, LOW );
+        }
+        // --- ./Process here
     }
 }
 
@@ -108,10 +128,11 @@ int getPrecision() {
  * @param clear
  */
 void oledPrint( const char *str, bool clear = true ) {
-    if ( clear )
+    if ( clear ) {
         display.clearDisplay();
+        display.setCursor( 0, 0 );
+    }
     
-    display.setCursor( 0, 0 );
     display.print( str );
     display.display();
 }
@@ -123,10 +144,11 @@ void oledPrint( const char *str, bool clear = true ) {
  * @param clear
  */
 void oledPrintLn( const char *str, bool clear = true ) {
-    if ( clear )
+    if ( clear ) {
         display.clearDisplay();
+        display.setCursor( 0, 0 );
+    }
     
-    display.setCursor( 0, 0 );
     display.println( str );
     display.display();
 }
@@ -138,10 +160,11 @@ void oledPrintLn( const char *str, bool clear = true ) {
  * @param clear
  */
 void oledPrintLn( const Printable &x, bool clear = true ) {
-    if ( clear )
+    if ( clear ) {
         display.clearDisplay();
+        display.setCursor( 0, 0 );
+    }
     
-    display.setCursor( 0, 0 );
     display.println( x );
     display.display();
 }
@@ -153,10 +176,11 @@ void oledPrintLn( const Printable &x, bool clear = true ) {
  * @param clear
  */
 void oledPrintLn( unsigned char b, bool clear = true ) {
-    if ( clear )
+    if ( clear ) {
         display.clearDisplay();
+        display.setCursor( 0, 0 );
+    }
     
-    display.setCursor( 0, 0 );
     display.println( b );
     display.display();
 }
@@ -184,24 +208,11 @@ void IRAM_ATTR onResetValue() {
  * Post process after a pulse detection. Do a sync with a remote for example
  */
 void IRAM_ATTR postProcessPulseDetection() {
-    Serial.println( "Catch" );
     digitalWrite( WH_PULSE_LED_PIN, HIGH );
     
-    // --- Process here
-    if ( syncCycleCounter >= SYNC_CYCLE ) {
-        syncCycleCounter = 0;
-        digitalWrite( WH_PULSE_LED_PIN, HIGH );
-        
-        // --- Sync here
-        Serial.println( "Sync" );
-        // --- ./Sync here
-        
-        digitalWrite( WH_PULSE_LED_PIN, LOW );
-    }
-    // --- ./Process here
+    // TODO: Find a way to generate a delay in interupt
     
     digitalWrite( WH_PULSE_LED_PIN, LOW );
-    Serial.println( "Plop" );
 }
 
 // ---- ./Interrupt
@@ -244,7 +255,7 @@ void setup() {
     WiFi.begin( WIFI_SSID, WIFI_PSWD );
     
     while ( WiFi.status() != WL_CONNECTED ) {
-        oledPrint( "Wifi connecting" );
+        oledPrint( "Wifi connecting #" );
         oledPrintLn( ++wifiCounterTry, false );
         
         if ( wifiCounterTry > WIFI_MAX_TRY ) {
@@ -267,6 +278,9 @@ void loop() {
     // ---- Wifi connexion
     if ( WiFi.status() != WL_CONNECTED )
         ESP.restart();
+    
+    // ---- Sync
+    syncCycleCounter++;
     
     // ---- Lux senor
     detectPulseChange();
