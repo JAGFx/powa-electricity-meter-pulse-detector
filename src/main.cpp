@@ -13,6 +13,13 @@
 // ---- Modules
 
 // -- OLED Scren
+#define DISPLAY_UNIT_WH " Wh"
+#define DISPLAY_UNIT_KWH " KWh"
+#define DISPLAY_UNIT_MWH " MWh"
+#define DISPLAY_PRECISION_10 2
+#define DISPLAY_PRECISION_100 1
+#define DISPLAY_PRECISION_1000 0
+
 Adafruit_SSD1306 display = Adafruit_SSD1306( 128, 32, &Wire );
 
 // -- Luminosity sensor
@@ -21,11 +28,7 @@ const uint8_t LUX_OFFSET = 0;
 uint8_t       lastLux    = -1;
 
 // -- Reset wh count
-#define RST_WH_DEBOUNCE_TIME 250
 #define RST_WH_BUTTON_PIN 34
-
-volatile uint32_t resetDebouncerTimer = 0;
-uint32_t          resetButtonCount    = 0;
 
 // -- Led WH pulse
 #define WH_PULSE_LED_PIN 12
@@ -36,13 +39,18 @@ uint32_t          resetButtonCount    = 0;
 IPAddress ip( 192, 168, 1, 70 );
 IPAddress gateway( 192, 168, 1, 1 );
 IPAddress subnet( 255, 255, 255, 0 );
-uint8_t   wifiCounterTry              = 0;
+uint8_t   wifiCounterTry = 0;
 
 // -- Sync
 #define SYNC_LED_PIN 2
-#define SYNC_CYCLE 100
+#define SYNC_CYCLE 500
+#define SYNC_URI String( SYNC_ENDPOINT_URI ) + SYNC_NAME
 
-uint16_t syncCycleCounter = 0;
+uint16_t   syncCycleCounter = 0;
+uint8_t    syncWhCounter    = 0;
+int8_t     syncResult       = -1;
+String     syncData;
+HTTPClient *http;
 
 // ---- ./Modules
 // ----------------------
@@ -57,14 +65,19 @@ volatile float whCount = 0;
  * Detect a pulse from you electricity meter. Each pulse = 1 Wh in France
  */
 void detectPulseChange() {
+    // ---- Sync
+    syncCycleCounter++;
+    
+    // ---- Lux
     uint8_t currentLux = ( int ) luxSensor.readLightLevel();
     
     if ( ( currentLux - LUX_OFFSET ) > 0 && currentLux != lastLux ) {
-        whCount++;
-        lastLux = currentLux;
-        
-        // Enable post process after the detection of new pulse
         digitalWrite( WH_PULSE_LED_PIN, HIGH );
+
+        whCount++;
+//        whCount += 126;
+        syncWhCounter++;
+        lastLux = currentLux;
         
         // --- Process here
         if ( syncCycleCounter >= SYNC_CYCLE ) {
@@ -72,17 +85,30 @@ void detectPulseChange() {
             digitalWrite( SYNC_LED_PIN, HIGH );
             
             // --- Sync here
-            HTTPClient http;
-            String     data  = "{\"target\":\"" + String( SYNC_NAME ) + "\",\"value\":\"" + whCount + "\"}";
+            http     = new HTTPClient();
+            syncData = "{\"target\":\"" + String( SYNC_NAME ) + "\",\"value\":\"" + syncWhCounter + "\"}";
             
-            http.begin( SYNC_ENDPOINT_HOST, SYNC_ENDPOINT_PORT, String( SYNC_ENDPOINT_URI ) + SYNC_NAME );
-            http.addHeader( "Content-Type", "application/json" );
-            http.POST( data );
-            http.end();
+            http->setConnectTimeout( 1000 );
+            http->begin( SYNC_ENDPOINT_HOST, SYNC_ENDPOINT_PORT, SYNC_URI );
+            http->addHeader( "Content-Type", "application/json" );
+            syncResult = http->POST( syncData );
+            http->end();
+            
+            Serial.println( syncResult );
+            Serial.println( http->errorToString( syncResult ) );
+            
+            if ( syncResult > 0 )
+                syncWhCounter = 0;
+            
+            delete http;
             // --- ./Sync here
             
             digitalWrite( SYNC_LED_PIN, LOW );
-        }
+            
+        } else
+            delay( 50 );
+        
+        digitalWrite( WH_PULSE_LED_PIN, LOW );
         // --- ./Process here
     }
 }
@@ -93,9 +119,9 @@ void detectPulseChange() {
  * @return string Unit for the current whCount value
  */
 const char *getUnit() {
-    if ( whCount <= 1000 ) return "Wh";
-    else if ( whCount <= 10000 ) return "KWh";
-    else return "MWh";
+    if ( whCount <= 1000 ) return DISPLAY_UNIT_WH;
+    else if ( whCount <= 100000 ) return DISPLAY_UNIT_KWH;
+    else return DISPLAY_UNIT_MWH;
 }
 
 /**
@@ -105,7 +131,7 @@ const char *getUnit() {
  */
 float getValue() {
     if ( whCount < 1000 ) return whCount;
-    else if ( whCount < 10000 ) return whCount / 1000;
+    else if ( whCount < 100000 ) return whCount / 1000;
     else return whCount / 10000;
 }
 
@@ -115,10 +141,10 @@ float getValue() {
  * @return int
  */
 int getPrecision() {
-    if ( getValue() < 10 ) return 3;
-    else if ( getValue() < 100 ) return 2;
-    else if ( getValue() < 1000 ) return 1;
-    else return 0;
+    if ( getValue() < 10 ) return DISPLAY_PRECISION_10;
+    else if ( getValue() < 100 ) return DISPLAY_PRECISION_100;
+//    else if ( getValue() < 1000 ) return 1;
+    else return DISPLAY_PRECISION_1000;
 }
 
 /**
@@ -196,23 +222,9 @@ void oledPrintLn( unsigned char b, bool clear = true ) {
  * Interupt for reset pressed button
  */
 void IRAM_ATTR onResetValue() {
-    if ( millis() - RST_WH_DEBOUNCE_TIME >= resetDebouncerTimer ) {
-        resetDebouncerTimer = millis();
-        resetButtonCount += 1;
-        whCount             = 0;
-//        Serial.printf( "Button has been pressed %u times\n", resetButtonCount );
-    }
-}
-
-/**
- * Post process after a pulse detection. Do a sync with a remote for example
- */
-void IRAM_ATTR postProcessPulseDetection() {
-    digitalWrite( WH_PULSE_LED_PIN, HIGH );
-    
-    // TODO: Find a way to generate a delay in interupt
-    
-    digitalWrite( WH_PULSE_LED_PIN, LOW );
+    whCount       = 0;
+    syncWhCounter = 0;
+    lastLux       = 0;
 }
 
 // ---- ./Interrupt
@@ -222,16 +234,15 @@ void IRAM_ATTR postProcessPulseDetection() {
 
 void setup() {
     Serial.begin( 115200 );
-    delay( 500 );
+    delay( 1500 );
     
     // ---- Reset WH count button
-//    pinMode( RST_WH_BUTTON_PIN, INPUT_PULLDOWN );
-//    attachInterrupt( RST_WH_BUTTON_PIN, onResetValue, RISING );
+    pinMode( RST_WH_BUTTON_PIN, INPUT_PULLDOWN );
+    attachInterrupt( RST_WH_BUTTON_PIN, onResetValue, RISING );
     
     // ---- LED Pulse
     pinMode( WH_PULSE_LED_PIN, OUTPUT );
     digitalWrite( WH_PULSE_LED_PIN, LOW );
-    attachInterrupt( WH_PULSE_LED_PIN, postProcessPulseDetection, RISING );
     
     // ---- Sync
     pinMode( SYNC_LED_PIN, OUTPUT );
@@ -279,9 +290,6 @@ void loop() {
     if ( WiFi.status() != WL_CONNECTED )
         ESP.restart();
     
-    // ---- Sync
-    syncCycleCounter++;
-    
     // ---- Lux senor
     detectPulseChange();
     
@@ -292,14 +300,14 @@ void loop() {
     display.print( getValue(), getPrecision() );
     display.setTextSize( 2 );
     display.println( getUnit() );
+    display.setCursor( 0, 25 );
+    display.setTextSize( 1 );
+    display.print( "Sync:" );
+    display.print( syncWhCounter );
+    display.print( " WH:" );
+    display.println( whCount, 0 );
     display.display(); // actually display all of the above1
     
-    // ---- Reset button
-    if ( resetButtonCount >= 5 ) {
-        detachInterrupt( RST_WH_BUTTON_PIN );
-        // reset click counter to avoid re-enter here
-        resetButtonCount = 0;
-    }
-    
     delay( 100 );
+    Serial.println( ESP.getFreeHeap() );
 }
