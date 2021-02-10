@@ -44,13 +44,14 @@ uint8_t   wifiCounterTry = 0;
 // -- Sync
 #define SYNC_LED_PIN 2
 #define SYNC_CYCLE 500
+//#define SYNC_CYCLE 100
 #define SYNC_URI String( SYNC_ENDPOINT_URI ) + SYNC_NAME
 
 uint16_t   syncCycleCounter = 0;
 uint8_t    syncWhCounter    = 0;
 int8_t     syncResult       = -1;
-String     syncData;
-HTTPClient *http;
+char       syncData[40];
+HTTPClient http;
 
 // ---- ./Modules
 // ----------------------
@@ -73,7 +74,7 @@ void detectPulseChange() {
     
     if ( ( currentLux - LUX_OFFSET ) > 0 && currentLux != lastLux ) {
         digitalWrite( WH_PULSE_LED_PIN, HIGH );
-
+        
         whCount++;
 //        whCount += 126;
         syncWhCounter++;
@@ -85,22 +86,15 @@ void detectPulseChange() {
             digitalWrite( SYNC_LED_PIN, HIGH );
             
             // --- Sync here
-            http     = new HTTPClient();
-            syncData = "{\"target\":\"" + String( SYNC_NAME ) + "\",\"value\":\"" + syncWhCounter + "\"}";
-            
-            http->setConnectTimeout( 1000 );
-            http->begin( SYNC_ENDPOINT_HOST, SYNC_ENDPOINT_PORT, SYNC_URI );
-            http->addHeader( "Content-Type", "application/json" );
-            syncResult = http->POST( syncData );
-            http->end();
-            
-            Serial.println( syncResult );
-            Serial.println( http->errorToString( syncResult ) );
+            sprintf( syncData, "{\"target\":\"%s\",\"value\":%d}", SYNC_NAME, syncWhCounter );
+            Serial.println( syncData );
+            syncResult = http.POST( syncData );
+
+//            Serial.println( syncResult );
+//            Serial.println( http.errorToString( syncResult ) );
             
             if ( syncResult > 0 )
                 syncWhCounter = 0;
-            
-            delete http;
             // --- ./Sync here
             
             digitalWrite( SYNC_LED_PIN, LOW );
@@ -244,10 +238,6 @@ void setup() {
     pinMode( WH_PULSE_LED_PIN, OUTPUT );
     digitalWrite( WH_PULSE_LED_PIN, LOW );
     
-    // ---- Sync
-    pinMode( SYNC_LED_PIN, OUTPUT );
-    digitalWrite( SYNC_LED_PIN, LOW );
-    
     // ---- OLED Screen
     display.begin( SSD1306_SWITCHCAPVCC, 0x3C ); // Address 0x3C for 128x32
     display.setTextSize( 1 );
@@ -281,6 +271,14 @@ void setup() {
     oledPrint( "Wifi: " );
     oledPrintLn( WiFi.localIP(), false );
     delay( 1000 );
+    
+    // ---- Sync
+    pinMode( SYNC_LED_PIN, OUTPUT );
+    digitalWrite( SYNC_LED_PIN, LOW );
+
+//    http.setConnectTimeout( 1000 );
+    http.begin( SYNC_ENDPOINT_HOST, SYNC_ENDPOINT_PORT, SYNC_URI );
+    http.addHeader( "Content-Type", "application/json" );
     
     display.setTextSize( 3 );
 }
