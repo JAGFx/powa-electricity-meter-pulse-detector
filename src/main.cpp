@@ -43,15 +43,20 @@ uint8_t   wifiCounterTry = 0;
 
 // -- Sync
 #define SYNC_LED_PIN 2
-#define SYNC_CYCLE 500
-//#define SYNC_CYCLE 100
-#define SYNC_URI String( SYNC_ENDPOINT_URI ) + SYNC_NAME
+//#define SYNC_CYCLE 500
+#define SYNC_CYCLE 100
+#define SYNC_WAITING_CYCLE 1000
+//#define SYNC_URI String( SYNC_ENDPOINT_URI ) + SYNC_NAME
 
 uint16_t   syncCycleCounter = 0;
 uint8_t    syncWhCounter    = 0;
-int8_t     syncResult       = -1;
-char       syncData[40];
-HTTPClient http;
+char       syncRequest[128];
+char       syncData[16];
+char       syncResponse[310];
+uint16_t   syncResponseI    = 0;
+uint16_t   syncWaitingCount = 0;
+int8_t     syncResult       = 0;
+WiFiClient client;
 
 // ---- ./Modules
 // ----------------------
@@ -74,27 +79,65 @@ void detectPulseChange() {
     
     if ( ( currentLux - LUX_OFFSET ) > 0 && currentLux != lastLux ) {
         digitalWrite( WH_PULSE_LED_PIN, HIGH );
-        
-        whCount++;
-//        whCount += 126;
+
+//        whCount++;
+        whCount += 126;
         syncWhCounter++;
         lastLux = currentLux;
         
         // --- Process here
         if ( syncCycleCounter >= SYNC_CYCLE ) {
             syncCycleCounter = 0;
+            syncWaitingCount = 0;
+            
             digitalWrite( SYNC_LED_PIN, HIGH );
             
             // --- Sync here
-            sprintf( syncData, "{\"target\":\"%s\",\"value\":%d}", SYNC_NAME, syncWhCounter );
-            Serial.println( syncData );
-            syncResult = http.POST( syncData );
-
-//            Serial.println( syncResult );
-//            Serial.println( http.errorToString( syncResult ) );
+            sprintf( syncData, "%s;%d", SYNC_NAME, syncWhCounter );
+            sprintf( syncRequest, "POST %s%s HTTP/1.1\n"
+                                  "Host: %s\n"
+                                  "Content-Type: text/plain\n"
+                                  "Content-Length: %d\n"
+                                  "\n"
+                                  "%s\n",
+                     SYNC_ENDPOINT_URI,
+                     SYNC_NAME,
+                     SYNC_ENDPOINT_HOST,
+                     strlen( syncData ),
+                     syncData );
             
-            if ( syncResult > 0 )
-                syncWhCounter = 0;
+            client.println( syncRequest );
+            client.println();
+            
+            while ( client.available() == 0 ) {
+                // Waiting sending
+                if ( ++syncWaitingCount > SYNC_WAITING_CYCLE ) {
+                    Serial.println( syncWaitingCount );
+                    syncResult = -1;
+                    break;
+                }
+            }
+            
+            if ( syncResult >= 0 ) {
+                syncResponseI    = 0;
+                syncWaitingCount = 0;
+                
+                while ( client.available() ) {
+                    syncResponse[ syncResponseI++ ] = ( char ) client.read();
+                    
+                    if ( ++syncWaitingCount > SYNC_WAITING_CYCLE ) {
+                        syncResult = -2;
+                        break;
+                    }
+                }
+                
+                if ( syncResult >= 0 && strstr( syncResponse, "HTTP/1.1 200" ) != NULL ) {
+                    syncResult    = 0;
+                    syncWhCounter = 0;
+                }
+            }
+            
+            Serial.println( syncResult );
             // --- ./Sync here
             
             digitalWrite( SYNC_LED_PIN, LOW );
@@ -275,10 +318,8 @@ void setup() {
     // ---- Sync
     pinMode( SYNC_LED_PIN, OUTPUT );
     digitalWrite( SYNC_LED_PIN, LOW );
-
-//    http.setConnectTimeout( 1000 );
-    http.begin( SYNC_ENDPOINT_HOST, SYNC_ENDPOINT_PORT, SYNC_URI );
-    http.addHeader( "Content-Type", "application/json" );
+    
+    client.connect( SYNC_ENDPOINT_HOST, SYNC_ENDPOINT_PORT );
     
     display.setTextSize( 3 );
 }
