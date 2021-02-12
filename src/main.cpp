@@ -5,9 +5,9 @@
 #include <Adafruit_SSD1306.h>
 #include <BH1750.h>
 #include <WiFi.h>
-#include <HTTPClient.h>
 
 #include <Settings.h>
+#include <Utils/Syncer.h>
 
 // ----------------------
 // ---- Modules
@@ -43,20 +43,8 @@ uint8_t   wifiCounterTry = 0;
 
 // -- Sync
 #define SYNC_LED_PIN 2
-//#define SYNC_CYCLE 500
-#define SYNC_CYCLE 100
-#define SYNC_WAITING_CYCLE 1000
-//#define SYNC_URI String( SYNC_ENDPOINT_URI ) + SYNC_NAME
 
-uint16_t   syncCycleCounter = 0;
-uint8_t    syncWhCounter    = 0;
-char       syncRequest[128];
-char       syncData[16];
-char       syncResponse[310];
-uint16_t   syncResponseI    = 0;
-uint16_t   syncWaitingCount = 0;
-int8_t     syncResult       = 0;
-WiFiClient client;
+Syncer syncer( SYNC_LED_PIN );
 
 // ---- ./Modules
 // ----------------------
@@ -72,7 +60,7 @@ volatile float whCount = 0;
  */
 void detectPulseChange() {
     // ---- Sync
-    syncCycleCounter++;
+    syncer.addCycle();
     
     // ---- Lux
     uint8_t currentLux = ( int ) luxSensor.readLightLevel();
@@ -82,68 +70,11 @@ void detectPulseChange() {
 
 //        whCount++;
         whCount += 126;
-        syncWhCounter++;
         lastLux = currentLux;
-        
-        // --- Process here
-        if ( syncCycleCounter >= SYNC_CYCLE ) {
-            syncCycleCounter = 0;
-            syncWaitingCount = 0;
-            
-            digitalWrite( SYNC_LED_PIN, HIGH );
-            
-            // --- Sync here
-            sprintf( syncData, "%s;%d", SYNC_NAME, syncWhCounter );
-            sprintf( syncRequest, "POST %s%s HTTP/1.1\n"
-                                  "Host: %s\n"
-                                  "Content-Type: text/plain\n"
-                                  "Content-Length: %d\n"
-                                  "\n"
-                                  "%s\n",
-                     SYNC_ENDPOINT_URI,
-                     SYNC_NAME,
-                     SYNC_ENDPOINT_HOST,
-                     strlen( syncData ),
-                     syncData );
-            
-            client.println( syncRequest );
-            client.println();
-            
-            while ( client.available() == 0 ) {
-                // Waiting sending
-                if ( ++syncWaitingCount > SYNC_WAITING_CYCLE ) {
-                    Serial.println( syncWaitingCount );
-                    syncResult = -1;
-                    break;
-                }
-            }
-            
-            if ( syncResult >= 0 ) {
-                syncResponseI    = 0;
-                syncWaitingCount = 0;
-                
-                while ( client.available() ) {
-                    syncResponse[ syncResponseI++ ] = ( char ) client.read();
-                    
-                    if ( ++syncWaitingCount > SYNC_WAITING_CYCLE ) {
-                        syncResult = -2;
-                        break;
-                    }
-                }
-                
-                if ( syncResult >= 0 && strstr( syncResponse, "HTTP/1.1 200" ) != NULL ) {
-                    syncResult    = 0;
-                    syncWhCounter = 0;
-                }
-            }
-            
-            Serial.println( syncResult );
-            // --- ./Sync here
-            
-            digitalWrite( SYNC_LED_PIN, LOW );
-            
-        } else
-            delay( 50 );
+    
+        // --- Sync here
+        syncer.sync();
+        // --- ./Sync here-
         
         digitalWrite( WH_PULSE_LED_PIN, LOW );
         // --- ./Process here
@@ -260,8 +191,9 @@ void oledPrintLn( unsigned char b, bool clear = true ) {
  */
 void IRAM_ATTR onResetValue() {
     whCount       = 0;
-    syncWhCounter = 0;
     lastLux       = 0;
+    
+    syncer.reset();
 }
 
 // ---- ./Interrupt
@@ -319,7 +251,7 @@ void setup() {
     pinMode( SYNC_LED_PIN, OUTPUT );
     digitalWrite( SYNC_LED_PIN, LOW );
     
-    client.connect( SYNC_ENDPOINT_HOST, SYNC_ENDPOINT_PORT );
+    syncer.connect();
     
     display.setTextSize( 3 );
 }
@@ -342,7 +274,7 @@ void loop() {
     display.setCursor( 0, 25 );
     display.setTextSize( 1 );
     display.print( "Sync:" );
-    display.print( syncWhCounter );
+    display.print( syncer.getWhCounter() );
     display.print( " WH:" );
     display.println( whCount, 0 );
     display.display(); // actually display all of the above1
