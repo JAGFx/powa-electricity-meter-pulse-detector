@@ -40,7 +40,8 @@ private:
     bool resetRequest();
 
 public:
-    static const uint16_t CYCLE         = 100;
+//    static const uint16_t CYCLE         = 100; // Test
+    static const uint16_t CYCLE         = 500;
     static const uint16_t WAITING_CYCLE = 3500;
     
     static const int8_t RESULT_ERROR_RECEIVE = -2;

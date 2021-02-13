@@ -68,8 +68,8 @@ void detectPulseChange() {
     if ( ( currentLux - LUX_OFFSET ) > 0 && currentLux != lastLux ) {
         digitalWrite( WH_PULSE_LED_PIN, HIGH );
 
-//        whCount++;
-        whCount += 1024;
+        whCount++;
+//        whCount += 126;
         lastLux = currentLux;
     
         // --- Sync here
@@ -87,9 +87,9 @@ void detectPulseChange() {
  * @return string Unit for the current whCount value
  */
 const char *getUnit() {
-    if ( whCount <= 1000 ) return DISPLAY_UNIT_WH;
-    else if ( whCount <= 100000 ) return DISPLAY_UNIT_KWH;
-    else return DISPLAY_UNIT_MWH;
+    if ( whCount > 1000000 ) return DISPLAY_UNIT_MWH;
+    else if ( whCount > 1000 ) return DISPLAY_UNIT_KWH;
+    else return DISPLAY_UNIT_WH;
 }
 
 /**
@@ -98,9 +98,9 @@ const char *getUnit() {
  * @return float
  */
 float getValue() {
-    if ( whCount < 1000 ) return whCount;
-    else if ( whCount < 100000 ) return whCount / 1000;
-    else return whCount / 10000;
+    if ( whCount > 1000000 ) return whCount / 1000000;
+    else if ( whCount > 1000 ) return whCount / 1000;
+    else return whCount;
 }
 
 /**
