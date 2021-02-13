@@ -70,8 +70,6 @@ public:
     
     uint8_t sync();
     
-    bool reset();
-    
     // ---
     
     bool enableToSync() const;

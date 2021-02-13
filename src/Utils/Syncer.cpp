@@ -136,11 +136,6 @@ uint8_t Syncer::sync() {
     return _result;
 }
 
-bool Syncer::reset() {
-    _whCounter = 0;
-    return true;
-}
-
 // ---
 
 bool Syncer::enableToSync() const {

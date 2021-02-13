@@ -63,6 +63,7 @@ void detectPulseChange() {
     syncer.addCycle();
     
     // ---- Lux
+    // FIXME: Fire a sync even if no change was detected on light sensor. But only if a sync counter was !== 0
     uint8_t currentLux = ( int ) luxSensor.readLightLevel();
     
     if ( ( currentLux - LUX_OFFSET ) > 0 && currentLux != lastLux ) {
@@ -192,8 +193,6 @@ void oledPrintLn( unsigned char b, bool clear = true ) {
 void IRAM_ATTR onResetValue() {
     whCount       = 0;
     lastLux       = 0;
-    
-    syncer.reset();
 }
 
 // ---- ./Interrupt
