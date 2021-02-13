@@ -11,13 +11,8 @@
 void Syncer::send() {
     resetRequest();
     
-    sprintf( _data, "%s;%d", SYNC_NAME, _whCounter );
-    sprintf( _request, "POST %s%s HTTP/1.1\n"
-                       "Host: %s\n"
-                       "Content-Type: text/plain\n"
-                       "Content-Length: %d\n"
-                       "\n"
-                       "%s\n",
+    sprintf( _data, REQUEST_DATA_TEMPLATE, SYNC_NAME, _whCounter );
+    sprintf( _request, REQUEST_TEMPLATE,
              SYNC_ENDPOINT_URI,
              SYNC_NAME,
              SYNC_ENDPOINT_HOST,
@@ -26,17 +21,19 @@ void Syncer::send() {
     
     _client->write( _request );
     
-    while ( _client->available() == 0 ) {
-//        ++_waitingCount;
-        _result = RESULT_SUCCESS;
-
+    uint8_t cAvailable = _client->available();
+    
+    while ( !cAvailable ) {
+        _result    = RESULT_SUCCESS;
+        cAvailable = _client->available();
+        
         if ( ++_waitingCount > WAITING_CYCLE ) {
             _client->stop();
             _result = RESULT_ERROR_SEND;
             break;
         }
     }
-    
+
 //    Serial.print( "send | " );
 //    Serial.print( "_whCounter: " );
 //    Serial.print( _whCounter );
@@ -52,9 +49,11 @@ void Syncer::send() {
 void Syncer::receive() {
     if ( resultIsNotAnError() ) {
         resetRequest();
-
-        while ( _client->available() ) {
+        
+        uint8_t cAvailable = _client->available();
+        while ( !cAvailable ) {
             _response[ _responseI++ ] = ( char ) _client->read();
+            cAvailable = _client->available();
             
             if ( ++_waitingCount > WAITING_CYCLE ) {
                 _result = RESULT_ERROR_RECEIVE;
@@ -63,9 +62,9 @@ void Syncer::receive() {
             }
         }
         
-        if ( resultIsNotAnError() && strstr( _response, "HTTP/1.1 200" ) != NULL )
+        if ( resultIsNotAnError() && strstr( _response, RESPONSE_HEADER_OK ) != NULL )
             _result = RESULT_SUCCESS;
-        
+
 //        Serial.print( "receive | " );
 //        Serial.print( "_waitingCount: " );
 //        Serial.print( _waitingCount );
@@ -119,14 +118,14 @@ uint8_t Syncer::sync() {
         
         resetRequest();
         
-        if( reconnect() ){
+        if ( reconnect() ) {
             send();
             receive();
         }
-    
-//        Serial.print( "Cli: " );
+
+//        Serial.print( "_client->connected(): " );
 //        Serial.print( _client->connected() );
-//        Serial.print( " | Res: " );
+//        Serial.print( " | _result: " );
 //        Serial.println( _result );
         
     } else

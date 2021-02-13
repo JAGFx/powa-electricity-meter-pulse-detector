@@ -69,7 +69,7 @@ void detectPulseChange() {
         digitalWrite( WH_PULSE_LED_PIN, HIGH );
 
 //        whCount++;
-        whCount += 126;
+        whCount += 1024;
         lastLux = currentLux;
     
         // --- Sync here
@@ -280,5 +280,5 @@ void loop() {
     display.display(); // actually display all of the above1
     
     delay( 100 );
-//    Serial.println( ESP.getFreeHeap() );
+    Serial.println( ESP.getFreeHeap() );
 }

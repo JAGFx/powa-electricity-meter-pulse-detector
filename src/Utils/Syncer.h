@@ -42,12 +42,20 @@ private:
 public:
     static const uint16_t CYCLE         = 100;
     static const uint16_t WAITING_CYCLE = 3500;
-    static const uint32_t TIMEOUT = 2;
     
     static const int8_t RESULT_ERROR_RECEIVE = -2;
     static const int8_t RESULT_ERROR_SEND    = -1;
     static const int8_t RESULT_NONE          = 0;
     static const int8_t RESULT_SUCCESS       = 1;
+    
+    static constexpr const char* RESPONSE_HEADER_OK    = "HTTP/1.1 200";
+    static constexpr const char* REQUEST_DATA_TEMPLATE = "%s;%d";
+    static constexpr const char* REQUEST_TEMPLATE      = "POST %s%s HTTP/1.1\n"
+                                              "Host: %s\n"
+                                              "Content-Type: text/plain\n"
+                                              "Content-Length: %d\n"
+                                              "\n"
+                                              "%s\n";
     
     // --
     
