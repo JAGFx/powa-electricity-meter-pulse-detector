@@ -9,6 +9,8 @@
 #include "Syncer.h"
 
 void Syncer::send() {
+    resetRequest();
+    
     sprintf( _data, "%s;%d", SYNC_NAME, _whCounter );
     sprintf( _request, "POST %s%s HTTP/1.1\n"
                        "Host: %s\n"
@@ -23,15 +25,10 @@ void Syncer::send() {
              _data );
     
     _client->write( _request );
-//    _client->println();
-    
-    _waitingCount = 0;
-    _result       = RESULT_NONE;
     
     while ( _client->available() == 0 ) {
-        _result = RESULT_SUCCESS;
-        
 //        ++_waitingCount;
+        _result = RESULT_SUCCESS;
 
         if ( ++_waitingCount > WAITING_CYCLE ) {
             _client->stop();
@@ -40,23 +37,25 @@ void Syncer::send() {
         }
     }
     
-    Serial.println( _waitingCount );
+//    Serial.print( "send | " );
+//    Serial.print( "_whCounter: " );
+//    Serial.print( _whCounter );
+//    Serial.print( " | _waitingCount: " );
+//    Serial.print( _waitingCount );
+//    Serial.print( " | _result: " );
+//    Serial.println( _result );
+    
     if ( _result == RESULT_SUCCESS )
         _whCounter = 0;
 }
 
 void Syncer::receive() {
     if ( resultIsNotAnError() ) {
-        _responseI    = 0;
-        _waitingCount = 0;
-        _result       = RESULT_NONE;
-        
+        resetRequest();
+
         while ( _client->available() ) {
-            _result = RESULT_SUCCESS;
             _response[ _responseI++ ] = ( char ) _client->read();
             
-//            ++_waitingCount;
-
             if ( ++_waitingCount > WAITING_CYCLE ) {
                 _result = RESULT_ERROR_RECEIVE;
                 _client->stop();
@@ -65,13 +64,32 @@ void Syncer::receive() {
         }
         
         if ( resultIsNotAnError() && strstr( _response, "HTTP/1.1 200" ) != NULL )
-            _result = RESULT_NONE;
+            _result = RESULT_SUCCESS;
         
+//        Serial.print( "receive | " );
+//        Serial.print( "_waitingCount: " );
+//        Serial.print( _waitingCount );
+//        Serial.print( " | _result: " );
+//        Serial.println( _result );
     }
 }
 
 bool Syncer::resultIsNotAnError() const {
     return _result >= RESULT_NONE;
+}
+
+bool Syncer::resetRequest() {
+    _cycleCounter = 0;
+    
+    memset( _request, 0, strlen( _request ) );
+    memset( _data, 0, strlen( _data ) );
+    memset( _response, 0, strlen( _response ) );
+    
+    _responseI    = 0;
+    _waitingCount = 0;
+    _result       = RESULT_NONE;
+    
+    return true;
 }
 
 // ---
@@ -84,29 +102,32 @@ int8_t Syncer::connect() {
     return _client->connect( SYNC_ENDPOINT_HOST, SYNC_ENDPOINT_PORT );
 }
 
-int8_t Syncer::reconnect() {
+bool Syncer::reconnect() {
     if ( !_client->connected() ) {
         _client->stop();
         return connect();
     }
     
-    return 0;
+    return true;
 }
 
 uint8_t Syncer::sync() {
     _whCounter++;
     
     if ( enableToSync() ) {
-        _cycleCounter = 0;
-        _waitingCount = 0;
-    
         digitalWrite( _ledPin, HIGH );
         
-        reconnect();
-        send();
-        receive();
+        resetRequest();
         
-        Serial.println( _result );
+        if( reconnect() ){
+            send();
+            receive();
+        }
+    
+//        Serial.print( "Cli: " );
+//        Serial.print( _client->connected() );
+//        Serial.print( " | Res: " );
+//        Serial.println( _result );
         
     } else
         delay( 50 );

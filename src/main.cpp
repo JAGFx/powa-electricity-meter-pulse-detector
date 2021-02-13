@@ -280,5 +280,5 @@ void loop() {
     display.display(); // actually display all of the above1
     
     delay( 100 );
-    Serial.println( ESP.getFreeHeap() );
+//    Serial.println( ESP.getFreeHeap() );
 }

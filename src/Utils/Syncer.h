@@ -36,10 +36,13 @@ private:
     void receive();
     
     bool resultIsNotAnError() const;
+    
+    bool resetRequest();
 
 public:
     static const uint16_t CYCLE         = 100;
-    static const uint16_t WAITING_CYCLE = 1000;
+    static const uint16_t WAITING_CYCLE = 3500;
+    static const uint32_t TIMEOUT = 2;
     
     static const int8_t RESULT_ERROR_RECEIVE = -2;
     static const int8_t RESULT_ERROR_SEND    = -1;
@@ -54,7 +57,7 @@ public:
     
     int8_t connect();
     
-    int8_t reconnect();
+    bool reconnect();
     
     uint8_t sync();
     
