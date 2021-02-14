@@ -1,26 +1,17 @@
 #include <Arduino.h>
-#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_I2CDevice.h>
-#include <Adafruit_SSD1306.h>
+
 #include <BH1750.h>
 #include <WiFi.h>
 
 #include <Settings.h>
 #include <Utils/Syncer.h>
+#include <Utils/Oled.h>
 
 // ----------------------
 // ---- Modules
 
 // -- OLED Scren
-#define DISPLAY_UNIT_WH " Wh"
-#define DISPLAY_UNIT_KWH " KWh"
-#define DISPLAY_UNIT_MWH " MWh"
-#define DISPLAY_PRECISION_10 2
-#define DISPLAY_PRECISION_100 1
-#define DISPLAY_PRECISION_1000 0
-
-Adafruit_SSD1306 display = Adafruit_SSD1306( 128, 32, &Wire );
+Oled oled;
 
 // -- Luminosity sensor
 BH1750        luxSensor; // instantiate a sensor event object
@@ -50,8 +41,6 @@ Syncer syncer( SYNC_LED_PIN );
 // ----------------------
 
 
-volatile float whCount = 0;
-
 // ----------------------
 // ---- Common method
 
@@ -68,11 +57,10 @@ void detectPulseChange() {
     
     if ( ( currentLux - LUX_OFFSET ) > 0 && currentLux != lastLux ) {
         digitalWrite( WH_PULSE_LED_PIN, HIGH );
-
-        whCount++;
-//        whCount += 126;
+        
+        oled.whIncrease();
         lastLux = currentLux;
-    
+        
         // --- Sync here
         syncer.sync();
         // --- ./Sync here-
@@ -80,104 +68,6 @@ void detectPulseChange() {
         digitalWrite( WH_PULSE_LED_PIN, LOW );
         // --- ./Process here
     }
-}
-
-/**
- * Return the unit Wh, KWh or MWh
- *
- * @return string Unit for the current whCount value
- */
-const char *getUnit() {
-    if ( whCount > 1000000 ) return DISPLAY_UNIT_MWH;
-    else if ( whCount > 1000 ) return DISPLAY_UNIT_KWH;
-    else return DISPLAY_UNIT_WH;
-}
-
-/**
- * Format value to fit the value on the OLED screen
- *
- * @return float
- */
-float getValue() {
-    if ( whCount > 1000000 ) return whCount / 1000000;
-    else if ( whCount > 1000 ) return whCount / 1000;
-    else return whCount;
-}
-
-/**
- * Get the float precision to fit the value on OLED screen
- *
- * @return int
- */
-int getPrecision() {
-    if ( getValue() < 10 ) return DISPLAY_PRECISION_10;
-    else if ( getValue() < 100 ) return DISPLAY_PRECISION_100;
-//    else if ( getValue() < 1000 ) return 1;
-    else return DISPLAY_PRECISION_1000;
-}
-
-/**
- * Method to reset oled screen and display a new text
- *
- * @param str
- * @param clear
- */
-void oledPrint( const char *str, bool clear = true ) {
-    if ( clear ) {
-        display.clearDisplay();
-        display.setCursor( 0, 0 );
-    }
-    
-    display.print( str );
-    display.display();
-}
-
-/**
- * Method to reset oled screen and display a new text
- *
- * @param str
- * @param clear
- */
-void oledPrintLn( const char *str, bool clear = true ) {
-    if ( clear ) {
-        display.clearDisplay();
-        display.setCursor( 0, 0 );
-    }
-    
-    display.println( str );
-    display.display();
-}
-
-/**
- * Method to reset oled screen and display a new text
- *
- * @param x
- * @param clear
- */
-void oledPrintLn( const Printable &x, bool clear = true ) {
-    if ( clear ) {
-        display.clearDisplay();
-        display.setCursor( 0, 0 );
-    }
-    
-    display.println( x );
-    display.display();
-}
-
-/**
- * Method to reset oled screen and display a new text
- *
- * @param b
- * @param clear
- */
-void oledPrintLn( unsigned char b, bool clear = true ) {
-    if ( clear ) {
-        display.clearDisplay();
-        display.setCursor( 0, 0 );
-    }
-    
-    display.println( b );
-    display.display();
 }
 
 // ---- ./Common method
@@ -188,11 +78,11 @@ void oledPrintLn( unsigned char b, bool clear = true ) {
 // ---- Interrupt
 
 /**
- * Interupt for reset pressed button
+ * Interupt for whReset pressed button
  */
 void IRAM_ATTR onResetValue() {
-    whCount       = 0;
-    lastLux       = 0;
+    lastLux = 0;
+    oled.whReset();
 }
 
 // ---- ./Interrupt
@@ -213,37 +103,34 @@ void setup() {
     digitalWrite( WH_PULSE_LED_PIN, LOW );
     
     // ---- OLED Screen
-    display.begin( SSD1306_SWITCHCAPVCC, 0x3C ); // Address 0x3C for 128x32
-    display.setTextSize( 1 );
-    display.setTextColor( SSD1306_WHITE );
-    oledPrintLn( "Init..." );
+    oled.begin();
     delay( 500 );
     
     // ---- Lux sensor
-    oledPrintLn( "Sensor init..." );
+    oled.printLn( "Sensor init..." );
     luxSensor.begin();
     delay( 500 );
     
     // ---- Wifi
-    oledPrintLn( "Wifi init..." );
+    oled.printLn( "Wifi init..." );
     WiFi.config( ip, gateway, subnet );
     WiFi.begin( WIFI_SSID, WIFI_PSWD );
     
     while ( WiFi.status() != WL_CONNECTED ) {
-        oledPrint( "Wifi connecting #" );
-        oledPrintLn( ++wifiCounterTry, false );
+        oled.print( "Wifi connecting #" );
+        oled.printLn( ++wifiCounterTry, false );
         
         if ( wifiCounterTry > WIFI_MAX_TRY ) {
             wifiCounterTry = 0;
             WiFi.begin( WIFI_SSID, WIFI_PSWD );
-            oledPrintLn( "Wifi: Reset" );
+            oled.printLn( "Wifi: Reset" );
         }
         
         delay( 500 );
     }
     
-    oledPrint( "Wifi: " );
-    oledPrintLn( WiFi.localIP(), false );
+    oled.print( "Wifi: " );
+    oled.printLn( WiFi.localIP(), false );
     delay( 1000 );
     
     // ---- Sync
@@ -251,8 +138,6 @@ void setup() {
     digitalWrite( SYNC_LED_PIN, LOW );
     
     syncer.connect();
-    
-    display.setTextSize( 3 );
 }
 
 void loop() {
@@ -264,19 +149,7 @@ void loop() {
     detectPulseChange();
     
     // ---- Display WH count
-    display.clearDisplay();
-    display.setCursor( 0, 0 );
-    display.setTextSize( 3 );
-    display.print( getValue(), getPrecision() );
-    display.setTextSize( 2 );
-    display.println( getUnit() );
-    display.setCursor( 0, 25 );
-    display.setTextSize( 1 );
-    display.print( "Sync:" );
-    display.print( syncer.getWhCounter() );
-    display.print( " WH:" );
-    display.println( whCount, 0 );
-    display.display(); // actually display all of the above1
+    oled.loop( syncer.getWhCounter() );
     
     delay( 100 );
     Serial.println( ESP.getFreeHeap() );
