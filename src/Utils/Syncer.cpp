@@ -77,7 +77,7 @@ bool Syncer::resultIsNotAnError() const {
     return _result >= RESULT_NONE;
 }
 
-bool Syncer::resetRequest() {
+void Syncer::resetRequest() {
     _cycleCounter = 0;
     
     memset( _request, 0, strlen( _request ) );
@@ -87,8 +87,6 @@ bool Syncer::resetRequest() {
     _responseI    = 0;
     _waitingCount = 0;
     _result       = RESULT_NONE;
-    
-    return true;
 }
 
 // ---
@@ -110,8 +108,8 @@ bool Syncer::reconnect() {
     return false;
 }
 
-uint8_t Syncer::sync() {
-    _whCounter++;
+void Syncer::sync() {
+    _cycleCounter++;
     
     if ( enableToSync() ) {
         digitalWrite( _ledPin, HIGH );
@@ -122,28 +120,25 @@ uint8_t Syncer::sync() {
             send();
             receive();
         }
-        
+
 //        Serial.print( "_client->connected(): " );
 //        Serial.print( _client->connected() );
 //        Serial.print( " | _result: " );
 //        Serial.println( _result );
         
-    } else
-        delay( 50 );
-    
-    digitalWrite( _ledPin, LOW );
-    
-    return _result;
+        digitalWrite( _ledPin, LOW );
+    }
 }
 
 // ---
 
 bool Syncer::enableToSync() const {
-    return _cycleCounter >= Syncer::CYCLE;
+    return _cycleCounter >= Syncer::CYCLE && _whCounter > 0;
 }
 
-void Syncer::addCycle() {
-    _cycleCounter++;
+
+void Syncer::increaseWhCounter() {
+    _whCounter++;
 }
 
 // ---

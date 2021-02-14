@@ -48,26 +48,24 @@ Syncer syncer( SYNC_LED_PIN );
  * Detect a pulse from you electricity meter. Each pulse = 1 Wh in France
  */
 void detectPulseChange() {
-    // ---- Sync
-    syncer.addCycle();
-    
-    // ---- Lux
-    // FIXME: Fire a sync even if no change was detected on light sensor. But only if a sync counter was !== 0
+    // --- Lux
     uint8_t currentLux = ( int ) luxSensor.readLightLevel();
     
     if ( ( currentLux - LUX_OFFSET ) > 0 && currentLux != lastLux ) {
         digitalWrite( WH_PULSE_LED_PIN, HIGH );
-        
+    
+        // --- Process here
         oled.whIncrease();
+        syncer.increaseWhCounter();
         lastLux = currentLux;
-        
-        // --- Sync here
-        syncer.sync();
-        // --- ./Sync here-
-        
-        digitalWrite( WH_PULSE_LED_PIN, LOW );
+        delay( 50 );
         // --- ./Process here
+    
+        digitalWrite( WH_PULSE_LED_PIN, LOW );
     }
+    
+    // --- Sync
+    syncer.sync();
 }
 
 // ---- ./Common method

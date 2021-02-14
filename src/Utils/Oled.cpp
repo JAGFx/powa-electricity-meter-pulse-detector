@@ -57,7 +57,7 @@ void Oled::begin() {
     printLn( "Init..." );
 }
 
-void Oled::loop( uint8_t syncerCount ) {
+void Oled::loop( uint16_t syncerCount ) {
     _screen->clearDisplay();
     _screen->setCursor( 0, 0 );
     _screen->setTextSize( 3 );

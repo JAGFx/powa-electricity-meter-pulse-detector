@@ -37,11 +37,11 @@ private:
     
     bool resultIsNotAnError() const;
     
-    bool resetRequest();
+    void resetRequest();
 
 public:
-    static const uint16_t CYCLE         = 50; // Test
-//    static const uint16_t CYCLE         = 500;
+//    static const uint16_t CYCLE         = 50; // Test
+    static const uint16_t CYCLE         = 500;
     static const uint16_t WAITING_CYCLE = 3500;
     
     static const int8_t RESULT_ERROR_RECEIVE = -2;
@@ -68,13 +68,13 @@ public:
     
     bool reconnect();
     
-    uint8_t sync();
+    void sync();
     
     // ---
     
     bool enableToSync() const;
     
-    void addCycle();
+    void increaseWhCounter();
     
     // ---
     

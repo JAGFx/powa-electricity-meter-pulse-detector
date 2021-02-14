@@ -43,7 +43,7 @@ public:
     // --
     void begin();
     
-    void loop( uint8_t syncerCount );
+    void loop( uint16_t syncerCount );
     
     void print( const char *str, bool clear = true );
     
@@ -54,6 +54,7 @@ public:
     void printLn( unsigned char b, bool clear = true );
     
     void whIncrease();
+    
     void whReset();
 };
 
