@@ -10,21 +10,21 @@
 #define CONSUMPTIONSNIFFER_OLED_H
 
 #include <Arduino.h>
-#include <Wire.h>
-#include <Adafruit_GFX.h>
+//#include <Wire.h>
+//#include <Adafruit_GFX.h>
 #include <Adafruit_I2CDevice.h>
 #include <Adafruit_SSD1306.h>
 
 class Oled {
 private:
-    Adafruit_SSD1306 *_display;
+    Adafruit_SSD1306 *_screen;
     float            _whCount = 0;
     
     // --
     
-    const char *getUnit();
+    const char *getUnit() const;
     
-    float getValue();
+    float getValue() const;
     
     uint8_t getPrecision();
 

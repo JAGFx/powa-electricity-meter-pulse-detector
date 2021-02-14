@@ -13,7 +13,7 @@
  *
  * @return string Unit for the current whCount value
  */
-const char *Oled::getUnit() {
+const char *Oled::getUnit() const {
     if ( _whCount > 1000000 ) return UNIT_MWH;
     else if ( _whCount > 1000 ) return UNIT_KWH;
     else return UNIT_WH;
@@ -24,7 +24,7 @@ const char *Oled::getUnit() {
  *
  * @return float
  */
-float Oled::getValue() {
+float Oled::getValue() const {
     if ( _whCount > 1000000 ) return _whCount / 1000000;
     else if ( _whCount > 1000 ) return _whCount / 1000;
     else return _whCount;
@@ -45,32 +45,32 @@ uint8_t Oled::getPrecision() {
 // --
 
 Oled::Oled() {
-    _display = new Adafruit_SSD1306( 128, 32, &Wire );
+    _screen = new Adafruit_SSD1306( SSD1306_LCDWIDTH, SSD1306_LCDHEIGHT, &Wire );
 }
 
 // --
 
 void Oled::begin() {
-    _display->begin( SSD1306_SWITCHCAPVCC, 0x3C ); // Address 0x3C for 128x32
-    _display->setTextSize( 1 );
-    _display->setTextColor( SSD1306_WHITE );
+    _screen->begin( SSD1306_SWITCHCAPVCC, 0x3C ); // Address 0x3C for 128x32
+    _screen->setTextSize( 1 );
+    _screen->setTextColor( SSD1306_WHITE );
     printLn( "Init..." );
 }
 
 void Oled::loop( uint8_t syncerCount ) {
-    _display->clearDisplay();
-    _display->setCursor( 0, 0 );
-    _display->setTextSize( 3 );
-    _display->print( getValue(), getPrecision() );
-    _display->setTextSize( 2 );
-    _display->println( getUnit() );
-    _display->setCursor( 0, 25 );
-    _display->setTextSize( 1 );
-    _display->print( "Sync:" );
-    _display->print( syncerCount );
-    _display->print( " WH:" );
-    _display->println( _whCount, 0 );
-    _display->display();
+    _screen->clearDisplay();
+    _screen->setCursor( 0, 0 );
+    _screen->setTextSize( 3 );
+    _screen->print( getValue(), getPrecision() );
+    _screen->setTextSize( 2 );
+    _screen->println( getUnit() );
+    _screen->setCursor( 0, 25 );
+    _screen->setTextSize( 1 );
+    _screen->print( "Sync:" );
+    _screen->print( syncerCount );
+    _screen->print( " WH:" );
+    _screen->println( _whCount, 0 );
+    _screen->display();
 }
 
 /**
@@ -81,12 +81,12 @@ void Oled::loop( uint8_t syncerCount ) {
  */
 void Oled::print( const char *str, bool clear ) {
     if ( clear ) {
-        _display->clearDisplay();
-        _display->setCursor( 0, 0 );
+        _screen->clearDisplay();
+        _screen->setCursor( 0, 0 );
     }
     
-    _display->print( str );
-    _display->display();
+    _screen->print( str );
+    _screen->display();
 }
 
 /**
@@ -97,12 +97,12 @@ void Oled::print( const char *str, bool clear ) {
  */
 void Oled::printLn( const char *str, bool clear ) {
     if ( clear ) {
-        _display->clearDisplay();
-        _display->setCursor( 0, 0 );
+        _screen->clearDisplay();
+        _screen->setCursor( 0, 0 );
     }
     
-    _display->println( str );
-    _display->display();
+    _screen->println( str );
+    _screen->display();
 }
 
 /**
@@ -113,12 +113,12 @@ void Oled::printLn( const char *str, bool clear ) {
  */
 void Oled::printLn( const Printable &x, bool clear ) {
     if ( clear ) {
-        _display->clearDisplay();
-        _display->setCursor( 0, 0 );
+        _screen->clearDisplay();
+        _screen->setCursor( 0, 0 );
     }
     
-    _display->println( x );
-    _display->display();
+    _screen->println( x );
+    _screen->display();
 }
 
 /**
@@ -129,12 +129,12 @@ void Oled::printLn( const Printable &x, bool clear ) {
  */
 void Oled::printLn( unsigned char b, bool clear ) {
     if ( clear ) {
-        _display->clearDisplay();
-        _display->setCursor( 0, 0 );
+        _screen->clearDisplay();
+        _screen->setCursor( 0, 0 );
     }
     
-    _display->println( b );
-    _display->display();
+    _screen->println( b );
+    _screen->display();
 }
 
 void Oled::whIncrease() {
