@@ -21,7 +21,7 @@ private:
     // --
     
     uint16_t _cycleCounter  = 0;
-    uint8_t  _whCounter     = 0;
+    uint16_t  _whCounter     = 0;
     char     _request[128]  = { 0 };
     char     _data[16]      = { 0 };
     char     _response[310] = { 0 };
@@ -40,8 +40,8 @@ private:
     bool resetRequest();
 
 public:
-//    static const uint16_t CYCLE         = 100; // Test
-    static const uint16_t CYCLE         = 500;
+    static const uint16_t CYCLE         = 50; // Test
+//    static const uint16_t CYCLE         = 500;
     static const uint16_t WAITING_CYCLE = 3500;
     
     static const int8_t RESULT_ERROR_RECEIVE = -2;
@@ -78,7 +78,7 @@ public:
     
     // ---
     
-    uint8_t getWhCounter() const;
+    uint16_t getWhCounter() const;
     
 };
 

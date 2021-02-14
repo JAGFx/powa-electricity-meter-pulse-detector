@@ -107,7 +107,7 @@ bool Syncer::reconnect() {
         return connect();
     }
     
-    return true;
+    return false;
 }
 
 uint8_t Syncer::sync() {
@@ -122,7 +122,7 @@ uint8_t Syncer::sync() {
             send();
             receive();
         }
-
+        
 //        Serial.print( "_client->connected(): " );
 //        Serial.print( _client->connected() );
 //        Serial.print( " | _result: " );
@@ -148,6 +148,6 @@ void Syncer::addCycle() {
 
 // ---
 
-uint8_t Syncer::getWhCounter() const {
+uint16_t Syncer::getWhCounter() const {
     return _whCounter;
 }
