@@ -1,0 +1,28 @@
+*Pick And Place List
+*Company=
+*Author=
+*eMail=
+*
+*Project=board
+*Date=17:42:47
+*CreatedBy=Fritzing 0.9.3b.04.19.5c895d327c44a3114e5fcc9d8260daf0cbb52806
+*
+*
+*Coordinates in mm, always center of component
+*Origin 0/0=Lower left corner of PCB
+*Rotation in degree (0-360, math. pos.)
+*
+*No;Value;Package;X;Y;Rotation;Side;Name
+1;;THT;25.1953;-2.30494;-90;Bottom;H_LUX
+2;;;2.33522;-2.30503;0;Bottom;Hole4
+3;10k;THT;44.2453;-20.0849;90;Bottom;R_LUX
+4;;;60.7552;-36.5949;0;Bottom;Hole2
+5;;3 mm [THT];11.8043;-21.3551;-90;Bottom;CLR
+6;;;20.6798;-29.7849;90;Bottom;OLED
+7;;;2.33522;-36.5949;0;Bottom;Hole3
+8;220;THT;20.1153;-20.0849;0;Bottom;R_CLR
+9;;;60.7552;-2.30503;0;Bottom;Hole1
+10;;[THT];10.6653;-7.09511;0;Bottom;RST
+11;;3 mm [THT];11.8043;-15.0051;-90;Bottom;SYNC
+12;220;THT;20.1153;-16.2749;0;Bottom;R_SYNC
+13;;;44.2458;-19.1421;0;Bottom;WeMos D1 Mini1
