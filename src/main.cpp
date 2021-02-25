@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
 #include <BH1750.h>
-#include <WiFi.h>
+#include <ESP8266WiFi.h>
 
 #include <Settings.h>
 #include <Utils/Syncer.h>
@@ -19,10 +19,10 @@ const uint8_t LUX_OFFSET = 0;
 uint8_t       lastLux    = -1;
 
 // -- Reset wh count
-#define RST_WH_BUTTON_PIN 34
+#define RST_WH_BUTTON_PIN D6
 
 // -- Led WH pulse
-#define WH_PULSE_LED_PIN 12
+#define WH_PULSE_LED_PIN D7
 
 // -- Wifi
 #define WIFI_MAX_TRY 10
@@ -33,7 +33,7 @@ IPAddress subnet( 255, 255, 255, 0 );
 uint8_t   wifiCounterTry = 0;
 
 // -- Sync
-#define SYNC_LED_PIN 2
+#define SYNC_LED_PIN D8
 
 Syncer syncer( SYNC_LED_PIN );
 
@@ -93,9 +93,9 @@ void setup() {
     delay( 1500 );
     
     // ---- Reset WH count button
-    pinMode( RST_WH_BUTTON_PIN, INPUT_PULLDOWN );
+    pinMode( RST_WH_BUTTON_PIN, INPUT );
     attachInterrupt( RST_WH_BUTTON_PIN, onResetValue, RISING );
-    
+
     // ---- LED Pulse
     pinMode( WH_PULSE_LED_PIN, OUTPUT );
     digitalWrite( WH_PULSE_LED_PIN, LOW );
@@ -150,5 +150,5 @@ void loop() {
     oled.loop( syncer.getWhCounter() );
     
     delay( 100 );
-    Serial.println( ESP.getFreeHeap() );
+//    Serial.println( ESP.getFreeHeap() );
 }

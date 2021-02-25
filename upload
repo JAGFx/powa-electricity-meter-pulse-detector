@@ -1,0 +1,3 @@
+#!/bin/bash
+
+sudo pio run -t upload -e d1_mini && sudo pio device monitor -b 115200 -e d1_mini -f esp8266_exception_decoder

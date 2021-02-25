@@ -10,7 +10,7 @@
 #define CONSUMPTIONSNIFFER_SYNCER_H
 
 #include <Arduino.h>
-#include <WiFi.h>
+#include <ESP8266WiFi.h>
 #include "../Settings.h"
 
 class Syncer {
@@ -42,7 +42,7 @@ private:
 public:
 //    static const uint16_t CYCLE         = 50; // Test
     static const uint16_t CYCLE         = 500;
-    static const uint16_t WAITING_CYCLE = 3500;
+    static const uint16_t WAITING_CYCLE = 15000;
     
     static const int8_t RESULT_ERROR_RECEIVE = -2;
     static const int8_t RESULT_ERROR_SEND    = -1;

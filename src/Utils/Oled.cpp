@@ -58,6 +58,7 @@ void Oled::begin() {
 }
 
 void Oled::loop( uint16_t syncerCount ) {
+    // FIXME: Crash on it
     _screen->clearDisplay();
     _screen->setCursor( 0, 0 );
     _screen->setTextSize( 3 );

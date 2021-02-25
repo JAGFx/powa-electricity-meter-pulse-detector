@@ -49,24 +49,29 @@ void Syncer::send() {
 void Syncer::receive() {
     if ( resultIsNotAnError() ) {
         resetRequest();
+
+//        uint8_t cAvailable = _client->available();
+        int8 cRead = _client->read();
+    
+        do {
+            _response[ _responseI++ ] = ( char ) cRead;
+            cRead = _client->read();
+//            cAvailable = _client->available();
         
-        uint8_t cAvailable = _client->available();
-        while ( !cAvailable ) {
-            _response[ _responseI++ ] = ( char ) _client->read();
-            cAvailable = _client->available();
-            
             if ( ++_waitingCount > WAITING_CYCLE ) {
                 _result = RESULT_ERROR_RECEIVE;
                 _client->stop();
                 break;
             }
-        }
         
-        if ( resultIsNotAnError() && strstr( _response, RESPONSE_HEADER_OK ) != NULL )
+        } while ( cRead != -1 );
+    
+        if ( resultIsNotAnError() && strstr( _response, RESPONSE_HEADER_OK ) != nullptr )
             _result = RESULT_SUCCESS;
 
 //        Serial.print( "receive | " );
-//        Serial.print( "_waitingCount: " );
+//        Serial.print( _response );
+//        Serial.print( " | _waitingCount: " );
 //        Serial.print( _waitingCount );
 //        Serial.print( " | _result: " );
 //        Serial.println( _result );
@@ -105,11 +110,13 @@ bool Syncer::reconnect() {
         return connect();
     }
     
-    return false;
+    return true;
 }
 
 void Syncer::sync() {
     _cycleCounter++;
+
+//    Serial.println( _cycleCounter );
     
     if ( enableToSync() ) {
         digitalWrite( _ledPin, HIGH );
