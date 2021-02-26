@@ -10,11 +10,11 @@
 
 void Syncer::send() {
     resetRequest();
+    resetResultSend();
     
     sprintf( _data, REQUEST_DATA_TEMPLATE, SYNC_NAME, _whCounter );
     sprintf( _request, REQUEST_TEMPLATE,
              SYNC_ENDPOINT_URI,
-             SYNC_NAME,
              SYNC_ENDPOINT_HOST,
              strlen( _data ),
              _data );
@@ -24,12 +24,12 @@ void Syncer::send() {
     uint8_t cAvailable = _client->available();
     
     while ( !cAvailable ) {
-        _result    = RESULT_SUCCESS;
-        cAvailable = _client->available();
-        
+        _resultSend = RESULT_SUCCESS;
+        cAvailable  = _client->available();
+    
         if ( ++_waitingCount > WAITING_CYCLE ) {
             _client->stop();
-            _result = RESULT_ERROR_SEND;
+            _resultSend = RESULT_ERROR_SEND;
             break;
         }
     }
@@ -38,48 +38,36 @@ void Syncer::send() {
 //    Serial.print( "_whCounter: " );
 //    Serial.print( _whCounter );
 //    Serial.print( " | _waitingCount: " );
-//    Serial.print( _waitingCount );
-//    Serial.print( " | _result: " );
-//    Serial.println( _result );
-    
-    if ( _result == RESULT_SUCCESS )
-        _whCounter = 0;
+//    Serial.println( _waitingCount );
 }
 
 void Syncer::receive() {
-    if ( resultIsNotAnError() ) {
+    if ( _resultSend >= RESULT_NONE ) {
         resetRequest();
-
-//        uint8_t cAvailable = _client->available();
+        resetResultReceive();
+        
         int8 cRead = _client->read();
-    
+        
         do {
             _response[ _responseI++ ] = ( char ) cRead;
             cRead = _client->read();
-//            cAvailable = _client->available();
-        
+            
             if ( ++_waitingCount > WAITING_CYCLE ) {
-                _result = RESULT_ERROR_RECEIVE;
+                _resultReceive = RESULT_ERROR_RECEIVE;
                 _client->stop();
                 break;
             }
+            
+        } while ( cRead != -1 && cRead != '\n' );
         
-        } while ( cRead != -1 );
-    
-        if ( resultIsNotAnError() && strstr( _response, RESPONSE_HEADER_OK ) != nullptr )
-            _result = RESULT_SUCCESS;
+        if ( _resultReceive >= RESULT_NONE && strstr( _response, RESPONSE_HEADER_OK ) != nullptr )
+            _resultReceive = RESULT_SUCCESS;
 
 //        Serial.print( "receive | " );
 //        Serial.print( _response );
 //        Serial.print( " | _waitingCount: " );
-//        Serial.print( _waitingCount );
-//        Serial.print( " | _result: " );
-//        Serial.println( _result );
+//        Serial.println( _waitingCount );
     }
-}
-
-bool Syncer::resultIsNotAnError() const {
-    return _result >= RESULT_NONE;
 }
 
 void Syncer::resetRequest() {
@@ -91,7 +79,22 @@ void Syncer::resetRequest() {
     
     _responseI    = 0;
     _waitingCount = 0;
-    _result       = RESULT_NONE;
+}
+
+void Syncer::resetResultSend() {
+    _resultSend = RESULT_NONE;
+}
+
+void Syncer::resetResultReceive() {
+    _resultReceive = RESULT_NONE;
+}
+
+void Syncer::resetWhCounter() {
+    if ( _resultSend == RESULT_SUCCESS && _resultReceive == RESULT_ERROR_RECEIVE )
+        _whCounter = 0;
+    
+    if ( _resultSend == RESULT_SUCCESS && _resultReceive == RESULT_SUCCESS )
+        _whCounter = 0;
 }
 
 // ---
@@ -120,19 +123,24 @@ void Syncer::sync() {
     
     if ( enableToSync() ) {
         digitalWrite( _ledPin, HIGH );
-        
+    
         resetRequest();
-        
+        resetResultSend();
+        resetResultReceive();
+    
         if ( reconnect() ) {
             send();
             receive();
+            resetWhCounter();
         }
 
 //        Serial.print( "_client->connected(): " );
 //        Serial.print( _client->connected() );
-//        Serial.print( " | _result: " );
-//        Serial.println( _result );
-        
+//        Serial.print( " | _resultSend: " );
+//        Serial.println( _resultSend );
+//        Serial.print( " | _resultReceive: " );
+//        Serial.println( _resultReceive );
+    
         digitalWrite( _ledPin, LOW );
     }
 }

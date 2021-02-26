@@ -21,13 +21,14 @@ private:
     // --
     
     uint16_t _cycleCounter  = 0;
-    uint16_t  _whCounter     = 0;
+    uint16_t _whCounter     = 0;
     char     _request[128]  = { 0 };
     char     _data[16]      = { 0 };
-    char     _response[310] = { 0 };
+    char     _response[128] = { 0 };
     uint16_t _responseI     = 0;
     uint16_t _waitingCount  = 0;
-    int8_t   _result        = RESULT_NONE;
+    int8_t   _resultSend    = RESULT_NONE;
+    int8_t   _resultReceive = RESULT_NONE;
     
     // --
     
@@ -35,9 +36,13 @@ private:
     
     void receive();
     
-    bool resultIsNotAnError() const;
-    
     void resetRequest();
+    
+    void resetResultSend();
+    
+    void resetResultReceive();
+    
+    void resetWhCounter();
 
 public:
 //    static const uint16_t CYCLE         = 50; // Test
@@ -49,14 +54,14 @@ public:
     static const int8_t RESULT_NONE          = 0;
     static const int8_t RESULT_SUCCESS       = 1;
     
-    static constexpr const char* RESPONSE_HEADER_OK    = "HTTP/1.1 200";
-    static constexpr const char* REQUEST_DATA_TEMPLATE = "%s;%d";
-    static constexpr const char* REQUEST_TEMPLATE      = "POST %s%s HTTP/1.1\n"
-                                              "Host: %s\n"
-                                              "Content-Type: text/plain\n"
-                                              "Content-Length: %d\n"
-                                              "\n"
-                                              "%s\n";
+    static constexpr const char *RESPONSE_HEADER_OK    = "HTTP/1.1 200";
+    static constexpr const char *REQUEST_DATA_TEMPLATE = "%s;%d";
+    static constexpr const char *REQUEST_TEMPLATE      = "POST %s HTTP/1.1\n"
+                                                         "Host: %s\n"
+                                                         "Content-Type: text/plain\n"
+                                                         "Content-Length: %d\n"
+                                                         "\n"
+                                                         "%s\n";
     
     // --
     
