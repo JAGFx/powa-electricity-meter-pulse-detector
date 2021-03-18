@@ -1,6 +1,5 @@
 #include <Arduino.h>
 
-#include <BH1750.h>
 #include <ESP8266WiFi.h>
 
 #include <Settings.h>
@@ -14,9 +13,11 @@
 Oled oled;
 
 // -- Luminosity sensor
-BH1750        luxSensor; // instantiate a sensor event object
-const uint8_t LUX_OFFSET = 0;
-uint8_t       lastLux    = -1;
+#define LUX_PIN A0
+#define LUX_DEBOUNCE_CYCLE 10
+#define LUX_OFFSET 10
+
+uint8_t luxCycle         = 0;
 
 // -- Reset wh count
 #define RST_WH_BUTTON_PIN D6
@@ -49,18 +50,21 @@ Syncer syncer( SYNC_LED_PIN );
  */
 void detectPulseChange() {
     // --- Lux
-    uint8_t currentLux = ( int ) luxSensor.readLightLevel();
+    uint8_t currentLux = analogRead( LUX_PIN );
+//    Serial.print( currentLux );
+//    Serial.print( " | " );
+//    Serial.println( luxCycle );
     
-    if ( ( currentLux - LUX_OFFSET ) > 0 && currentLux != lastLux ) {
+    if ( luxCycle++ > LUX_DEBOUNCE_CYCLE && currentLux > LUX_OFFSET ) {
+        luxCycle = 0;
         digitalWrite( WH_PULSE_LED_PIN, HIGH );
-    
+        
         // --- Process here
         oled.whIncrease();
         syncer.increaseWhCounter();
-        lastLux = currentLux;
         delay( 50 );
         // --- ./Process here
-    
+        
         digitalWrite( WH_PULSE_LED_PIN, LOW );
     }
     
@@ -79,7 +83,7 @@ void detectPulseChange() {
  * Interupt for whReset pressed button
  */
 void IRAM_ATTR onResetValue() {
-    lastLux = 0;
+    luxCycle = 0;
     oled.whReset();
 }
 
@@ -95,7 +99,7 @@ void setup() {
     // ---- Reset WH count button
     pinMode( RST_WH_BUTTON_PIN, INPUT );
     attachInterrupt( RST_WH_BUTTON_PIN, onResetValue, RISING );
-
+    
     // ---- LED Pulse
     pinMode( WH_PULSE_LED_PIN, OUTPUT );
     digitalWrite( WH_PULSE_LED_PIN, LOW );
@@ -106,7 +110,7 @@ void setup() {
     
     // ---- Lux sensor
     oled.printLn( "Sensor init..." );
-    luxSensor.begin();
+    pinMode( LUX_PIN, INPUT );
     delay( 500 );
     
     // ---- Wifi
