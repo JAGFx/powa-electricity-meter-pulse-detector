@@ -17,6 +17,7 @@ void Syncer::send() {
              SYNC_ENDPOINT_URI,
              SYNC_ENDPOINT_HOST,
              strlen( _data ),
+             SYNC_ENDPOINT_AUTH_TOKEN,
              _data );
     
     _client->write( _request );
@@ -34,9 +35,12 @@ void Syncer::send() {
         }
     }
 
+//    Serial.println( _request );
 //    Serial.print( "send | " );
 //    Serial.print( "_whCounter: " );
 //    Serial.print( _whCounter );
+//    Serial.print( "_resultSend: " );
+//    Serial.print( _resultSend );
 //    Serial.print( " | _waitingCount: " );
 //    Serial.println( _waitingCount );
 }
@@ -51,20 +55,24 @@ void Syncer::receive() {
         do {
             _response[ _responseI++ ] = ( char ) cRead;
             cRead = _client->read();
-            
+    
             if ( ++_waitingCount > WAITING_CYCLE ) {
                 _resultReceive = RESULT_ERROR_RECEIVE;
                 _client->stop();
                 break;
             }
-            
+    
         } while ( cRead != -1 && cRead != '\n' );
-        
+
+//        Serial.println(_response);
+    
         if ( _resultReceive >= RESULT_NONE && strstr( _response, RESPONSE_HEADER_OK ) != nullptr )
             _resultReceive = RESULT_SUCCESS;
 
-//        Serial.print( "receive | " );
-//        Serial.print( _response );
+//        Serial.print( "receive | _resultReceive: " );
+//        Serial.print( _resultReceive );
+//        Serial.print( " | _response: " );
+//        Serial.print( strstr( _response, RESPONSE_HEADER_OK ) );
 //        Serial.print( " | _waitingCount: " );
 //        Serial.println( _waitingCount );
     }

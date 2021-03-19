@@ -22,7 +22,7 @@ private:
     
     uint16_t _cycleCounter  = 0;
     uint16_t _whCounter     = 0;
-    char     _request[128]  = { 0 };
+    char     _request[160]  = { 0 };
     char     _data[16]      = { 0 };
     char     _response[128] = { 0 };
     uint16_t _responseI     = 0;
@@ -47,7 +47,7 @@ private:
 public:
 //    static const uint16_t CYCLE         = 50; // Test
     static const uint16_t CYCLE         = 500;
-    static const uint16_t WAITING_CYCLE = 15000;
+    static const uint16_t WAITING_CYCLE = 25000;
     
     static const int8_t RESULT_ERROR_RECEIVE = -2;
     static const int8_t RESULT_ERROR_SEND    = -1;
@@ -60,6 +60,7 @@ public:
                                                          "Host: %s\n"
                                                          "Content-Type: text/plain\n"
                                                          "Content-Length: %d\n"
+                                                         "Authorization: Basic %s\n"
                                                          "\n"
                                                          "%s\n";
     

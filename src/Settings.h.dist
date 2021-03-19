@@ -17,4 +17,7 @@
 #define SYNC_ENDPOINT_PORT 8080
 #define SYNC_ENDPOINT_URI "/api/sensors/"
 
+// Base64 encode for "toto:heroku42"
+#define SYNC_ENDPOINT_AUTH_TOKEN "dG90bzpoZXJva3U0Mg=="
+
 #endif //CONSUMPTIONSNIFFER_WIFI_CREDENTIALS_H
