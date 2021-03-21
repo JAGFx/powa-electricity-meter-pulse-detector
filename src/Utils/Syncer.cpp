@@ -51,6 +51,7 @@ void Syncer::receive() {
         resetResultReceive();
         
         int8 cRead = _client->read();
+        _resultReceive = RESULT_SUCCESS;
         
         do {
             _response[ _responseI++ ] = ( char ) cRead;
@@ -66,8 +67,8 @@ void Syncer::receive() {
 
 //        Serial.println(_response);
     
-        if ( _resultReceive >= RESULT_NONE && strstr( _response, RESPONSE_HEADER_OK ) != nullptr )
-            _resultReceive = RESULT_SUCCESS;
+        if ( _resultReceive == RESULT_SUCCESS && strstr( _response, RESPONSE_HEADER_OK ) == nullptr )
+            _resultReceive = RESULT_ERROR_RECEIVE;
 
 //        Serial.print( "receive | _resultReceive: " );
 //        Serial.print( _resultReceive );
